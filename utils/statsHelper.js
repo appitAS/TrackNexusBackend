@@ -3,8 +3,7 @@ const Activity = require('../models/Activity');
 async function calculateStatsForDate(userId, dateStr) {
   const dayStart = new Date(`${dateStr}T00:00:00`);
   const dayEnd = new Date(`${dateStr}T23:59:59.999`);
-  const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000); // IST
-
+ //const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000); // IST
   let activity = await Activity.findOne({ userId, date: dateStr });
   if (!activity) {
     activity = await Activity.findOne({
@@ -12,6 +11,7 @@ async function calculateStatsForDate(userId, dateStr) {
       punchInTime: { $gte: dayStart, $lte: dayEnd },
     });
   }
+
 
   if (!activity) {
     return {
@@ -22,7 +22,7 @@ async function calculateStatsForDate(userId, dateStr) {
       currentStatus: "No activity"
     };
   }
-
+  const now = activity.lastSeen;
   // Calculate total break time (completed + ongoing)
   let totalBreakSeconds = 0;
   if (activity.breaks?.length) {

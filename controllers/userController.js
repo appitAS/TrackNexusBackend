@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
         // Already punched in
         message = 'Already punched in';
         activity.lastSeen = now;
-        activity.activeSessionStart = now;
+        activity.activeSessionStart = activity.activeSessionStart != null ? activity.activeSessionStart : now;
         punchInTime = activity.punchInTime;
       }
   
@@ -88,6 +88,7 @@ exports.login = async (req, res) => {
         message,
         punchInTime,
         lastSeen: activity.lastSeen,
+        activeSessionStart: activity.activeSessionStart
       });
     } catch (err) {
       res.status(500).json({ msg: err.message });
