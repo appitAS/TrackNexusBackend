@@ -49,25 +49,39 @@ exports.updateLastSeen = async (req, res) => {
   try {
     const io = getIO();
     const userId = req.user.id;
-    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
-    console.log("today",today);
+    const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const today = now.toISOString().split('T')[0];
+
+    console.log("today", today);
+
     const activity = await Activity.findOne({ userId, date: today });
     if (!activity) return res.status(404).json({ msg: 'Activity not found' });
 
-    activity.lastSeen = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-    activity.currentStatus= "Active";
+    // Close active break if exists
+    const activeBreak = activity.breaks.find(b => !b.endedAt);
+    if (activeBreak) {
+      activeBreak.endedAt = now;
+    }
+
+    // Close active idle event if exists
+    const activeIdle = activity.idleEvents.find(i => !i.endedAt);
+    if (activeIdle) {
+      activeIdle.endedAt = now;
+      const duration = Math.round((now - new Date(activeIdle.startedAt)) / 60000);
+      activeIdle.durationInMinutes = duration;
+    }
+
+    activity.lastSeen = now;
+    activity.currentStatus = "Active";
     await activity.save();
-    // io.emit('status:update', {
-    //   userId: userId,
-    //   status: 'online',
-    //   timestamp: new Date(Date.now() + 5.5 * 60 * 60 * 1000),
-    // });
+
     res.status(200).json({ msg: 'Last seen updated', lastSeen: activity.lastSeen });
   } catch (err) {
     console.error('Last Seen Error:', err);
     res.status(500).json({ msg: 'Failed to update last seen' });
   }
 };
+
 
 // ✅ New route: Get stats for all users within a date range (only for managers or admins)
 exports.getAllUsersStatsInRange = async (req, res) => {

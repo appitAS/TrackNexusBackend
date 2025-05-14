@@ -57,7 +57,8 @@ async function calculateStatsForDate(userId, dateStr) {
     idleTimeInSeconds: Math.floor(totalIdleSeconds),
     breakTimeInSeconds: Math.floor(totalBreakSeconds),
     punchInTime: activity.punchInTime,
-    currentStatus: activity.currentStatus
+    currentStatus: activity.currentStatus,
+    lastSeen: activity.lastSeen
   };
 }
 

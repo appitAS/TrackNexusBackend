@@ -62,7 +62,7 @@ exports.submitClaim = async (req, res) => {
     const idleEvent = activity.idleEvents.find(i => i._id.toString() === idleEventId);
     if (!idleEvent) return res.status(404).json({ msg: 'Idle event not found' });
 
-    if (idleEvent.endedAt) return res.status(400).json({ msg: 'Claim already submitted for this idle event' });
+   // if (idleEvent.endedAt) return res.status(400).json({ msg: 'Claim already submitted for this idle event' });
 
     idleEvent.endedAt = IST();
     idleEvent.claimRequestedAt = IST();
