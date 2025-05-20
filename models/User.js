@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: { type: String, required: true },
   role: String,
+  tracktype: { type: String, enum: ['punchin-punchout', '24x7'], default: '24x7' },
   manager: String,
   teams: [String],
   desktop: String,
