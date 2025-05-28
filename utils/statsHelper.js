@@ -28,7 +28,7 @@ async function calculateStatsForDate(userId, dateStr) {
   if (activity.breaks?.length) {
     activity.breaks.forEach(b => {
       if (b.startedAt) {
-        const end = b.endedAt || now;
+        const end = b.endedAt || b.startedAt;
         totalBreakSeconds += (new Date(end) - new Date(b.startedAt)) / 1000;
       }
     });
