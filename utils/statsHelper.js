@@ -39,7 +39,7 @@ async function calculateStatsForDate(userId, dateStr) {
   if (activity.idleEvents?.length) {
     activity.idleEvents.forEach(event => {
       if (event.startedAt) {
-        const end = event.endedAt || now;
+        const end = event.endedAt || event.startedAt;
         totalIdleSeconds += (new Date(end) - new Date(event.startedAt)) / 1000;
       }
     });
