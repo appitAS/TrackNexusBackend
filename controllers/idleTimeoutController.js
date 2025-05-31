@@ -1,11 +1,13 @@
 const Activity = require('../models/Activity');
 const User = require('../models/User'); 
 const moment = require('moment');
+const { getIO } = require('../socket');
 
 const IST = () => new Date(Date.now() + 5.5 * 60 * 60 * 1000);
 
 exports.createIdleTimeout = async (req, res) => {
   try {
+    const io = getIO();
     const userId = req.user.id;
     const today = IST().toISOString().split('T')[0];
 
@@ -14,7 +16,11 @@ exports.createIdleTimeout = async (req, res) => {
     if (!activity) {
       return res.status(400).json({ msg: 'Cannot record idle timeout. Activity not found. Please punch in first.' });
     }
-
+    io.emit('status:update', {
+      userId: userId,
+      status: 'idle',
+      timestamp: IST(),
+    });
     activity.idleEvents.push({
       endedAt : null,
       startedAt: IST(),

@@ -19,12 +19,12 @@ const configSchema = new mongoose.Schema({
   applicationPunchInTime: {
     type: String,
     required: true,
-    default: '09:00', // 9 AM in 24-hour format
+    default: '01:00', 
   },
   applicationPunchOutTime: {
     type: String,
     required: true,
-    default: '19:00', // 7 PM in 24-hour format
+    default: '23:00', 
   }
 }, { timestamps: true });
 

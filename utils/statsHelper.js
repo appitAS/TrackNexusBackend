@@ -36,15 +36,23 @@ async function calculateStatsForDate(userId, dateStr) {
 
   // Calculate total idle time (completed + ongoing)
   let totalIdleSeconds = 0;
+  let totalApprovedIdleSeconds = 0;
+  let totalRejectedIdleSeconds = 0;
   if (activity.idleEvents?.length) {
     activity.idleEvents.forEach(event => {
       if (event.startedAt) {
         const end = event.endedAt || event.startedAt;
-        totalIdleSeconds += (new Date(end) - new Date(event.startedAt)) / 1000;
+        const duration = (new Date(end) - new Date(event.startedAt)) / 1000;
+        totalIdleSeconds += duration;
+        // Count approved and rejected idle events
+        if (event.status === 'approved') {
+          totalApprovedIdleSeconds += duration;
+        } else if (event.status === 'rejected') {
+          totalRejectedIdleSeconds += duration;
+        }
       }
     });
   }
-
   // Calculate work time
   let totalWorkSeconds = (activity.totalWorkMinutes || 0) * 60;
   if (activity.activeSessionStart) {
@@ -55,6 +63,8 @@ async function calculateStatsForDate(userId, dateStr) {
     date: dateStr,
     workingTimeInSeconds: Math.floor(totalWorkSeconds),
     idleTimeInSeconds: Math.floor(totalIdleSeconds),
+    approvedIdleTimeInSeconds: Math.floor(totalApprovedIdleSeconds),
+    rejectedIdleTimeInSeconds: Math.floor(totalRejectedIdleSeconds),
     breakTimeInSeconds: Math.floor(totalBreakSeconds),
     punchInTime: activity.punchInTime,
     currentStatus: activity.currentStatus,
