@@ -6,6 +6,8 @@ const timeClaimSchema = new mongoose.Schema({
   duration: Number,
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   requestedAt: { type: Date, default: Date.now },
+  UpdatedAt: { type: Date, default: Date.now },
+  ApprovedBy: String
 });
 
 module.exports = mongoose.model('TimeClaim', timeClaimSchema);

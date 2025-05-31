@@ -16,7 +16,7 @@ router.get('/user/:userId', auth, getIdleTimeoutsByDateRange);
 router.post('/submit-claim', auth, submitClaim);
 router.post('/create',auth, createIdleTimeout);
 // 🔒 Admin/Manager Only
-router.put('/update/:activityId/:idleEventIndex', auth, requireRole('manager', 'admin'), updateIdleTimeoutById);
+router.put('/update/:activityId/:idleEventId', auth, requireRole('manager', 'admin'), updateIdleTimeoutById);
 router.get('/all', auth, requireRole('manager', 'admin'), getAllIdleTimeoutsByDateRange);
 router.delete('/delete/:activityId/:idleEventIndex', auth, requireRole('manager', 'admin'), deleteIdleTimeout);
 
