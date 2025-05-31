@@ -70,7 +70,11 @@ exports.updateLastSeen = async (req, res) => {
       const duration = Math.round((now - new Date(activeIdle.startedAt)) / 60000);
       activeIdle.durationInMinutes = duration;
     }
-
+    io.emit('status:update', {
+      userId: userId,
+      status: 'online',
+      timestamp: now,
+    });
     activity.lastSeen = now;
     activity.currentStatus = "Active";
     await activity.save();

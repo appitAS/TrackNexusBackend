@@ -1,10 +1,13 @@
 const Activity = require('../models/Activity');
+const User = require('../models/User'); 
 const moment = require('moment');
+const { getIO } = require('../socket');
 
 const IST = () => new Date(Date.now() + 5.5 * 60 * 60 * 1000);
 
 exports.createIdleTimeout = async (req, res) => {
   try {
+    const io = getIO();
     const userId = req.user.id;
     const today = IST().toISOString().split('T')[0];
 
@@ -13,7 +16,11 @@ exports.createIdleTimeout = async (req, res) => {
     if (!activity) {
       return res.status(400).json({ msg: 'Cannot record idle timeout. Activity not found. Please punch in first.' });
     }
-
+    io.emit('status:update', {
+      userId: userId,
+      status: 'idle',
+      timestamp: IST(),
+    });
     activity.idleEvents.push({
       endedAt : null,
       startedAt: IST(),
@@ -56,7 +63,7 @@ exports.submitClaim = async (req, res) => {
 
     const activity = await Activity.findOne({ userId, date: today });
     if (!activity || !activity.idleEvents.length) {
-      return res.status(404).json({ msg: 'No idle events found' });
+      return res.status(404).json({ msg: 'No activity events found' });
     }
 
     const idleEvent = activity.idleEvents.find(i => i._id.toString() === idleEventId);
@@ -80,25 +87,30 @@ exports.submitClaim = async (req, res) => {
 };
 exports.updateIdleTimeoutById = async (req, res) => {
   try {
-    const { activityId, idleEventIndex } = req.params;
-    const { startedAt, endedAt, durationInMinutes, status } = req.body;
+    const { activityId, idleEventId } = req.params;
+    const { endedAt, status } = req.body;
 
     const activity = await Activity.findById(activityId);
     if (!activity) return res.status(404).json({ msg: 'Activity not found' });
 
-    const idleEvent = activity.idleEvents[idleEventIndex];
+      const idleEvent = activity.idleEvents.find(
+      event => event._id.toString() === idleEventId
+    );
     if (!idleEvent) return res.status(404).json({ msg: 'Idle event not found' });
 
-    if (startedAt) idleEvent.startedAt = new Date(startedAt);
     if (endedAt) idleEvent.endedAt = new Date(endedAt);
-    if (durationInMinutes) idleEvent.durationInMinutes = durationInMinutes;
     if (status) idleEvent.status = status;
+    idleEvent.updatedAt = IST();
+
+    if (req.user?.name) {
+      idleEvent.ApprovedBy = req.user.name;
+    }
 
     await activity.save();
-    res.status(200).json({ msg: 'Idle timeout updated' });
+    res.status(200).json({ msg: 'Idle timeout updated', idleEvent });
   } catch (err) {
     console.error('updateIdleTimeoutById:', err);
-    res.status(500).json({ msg: 'Failed to update timeout' });
+    res.status(500).json({ msg: 'Failed to update timeout',msg: err.message });
   }
 };
 
@@ -106,12 +118,35 @@ exports.getAllIdleTimeoutsByDateRange = async (req, res) => {
   try {
     const { start, end } = req.query;
 
-    const activities = await Activity.find({
-      date: { $gte: start, $lte: end },
-      'idleEvents.0': { $exists: true }
-    });
+    if (!start || !end) {
+      return res.status(400).json({ msg: 'Start and end dates are required' });
+    }
 
-    res.status(200).json(activities);
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    const users = await User.find({}, '_id name email');
+
+    const results = await Promise.all(
+      users.map(async (user) => {
+        const activities = await Activity.find({
+          userId: user._id,
+          date: { $gte: start, $lte: end },
+          'idleEvents.0': { $exists: true }
+        });
+
+        return {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email
+          },
+          activities
+        };
+      })
+    );
+
+    res.status(200).json(results);
   } catch (err) {
     console.error('getAllIdleTimeoutsByDateRange:', err);
     res.status(500).json({ msg: 'Failed to fetch idle timeouts' });

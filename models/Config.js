@@ -10,6 +10,21 @@ const configSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 5,
+  },
+  applicationAdminPassword: {
+    type: String,
+    required: true,
+    default: 'admin123',
+  },
+  applicationPunchInTime: {
+    type: String,
+    required: true,
+    default: '01:00', 
+  },
+  applicationPunchOutTime: {
+    type: String,
+    required: true,
+    default: '23:00', 
   }
 }, { timestamps: true });
 

@@ -3,6 +3,8 @@ const Activity = require('../models/Activity');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getIO } = require('../socket'); 
+const Config = require('../models/Config');
+const { checkLoginTime } = require('../utils/timeChecker');
 
 exports.signup = async (req, res) => {
   try {
@@ -34,68 +36,78 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    try {
-      const io = getIO();
-      const { username, password } = req.body;
-  
-      const user = await User.findOne({ username });
-      if (!user) return res.status(400).json({ msg: 'User not found' });
-  
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
-  
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '1d',
-      });
-  
-      const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-      const today = now.toISOString().split('T')[0];
-  
-      let activity = await Activity.findOne({ userId: user._id, date: today });
-  
-      let message = 'Login successful';
-      let punchInTime;
-  
-      if (!activity) {
-        // New punch-in
-        activity = new Activity({
-          userId: user._id,
-          date: today,
-          punchInTime: now,
-          lastSeen: now,
-          activeSessionStart: now,
-        });
-        punchInTime = now;
-      } else {
-        // Already punched in
-        message = 'Already punched in';
-        activity.lastSeen = now;
-        activity.activeSessionStart = activity.activeSessionStart != null ? activity.activeSessionStart : now;
-        punchInTime = activity.punchInTime;
-      }
-  
-      await activity.save();
-      
-      
-      io.emit('status:update', {
-        userId: user._id,
-        status: 'online',
-        timestamp: new Date(Date.now() + 5.5 * 60 * 60 * 1000),
-      });
+  try {
+    const io = getIO();
+    const { username, password } = req.body;
 
-      res.json({
-        token,
-        user,
-        message,
-        punchInTime,
-        lastSeen: activity.lastSeen,
-        activeSessionStart: activity.activeSessionStart,
-        tracktype: user.tracktype 
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ msg: 'User not found' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
+
+    const config = await Config.findOne();
+    if (!config) return res.status(500).json({ msg: 'System configuration not found' });
+
+    // Get current IST time
+    const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+
+    const { allowed, reason } = checkLoginTime(
+      now,
+      config.applicationPunchInTime,
+      config.applicationPunchOutTime
+    );
+
+    if (!allowed) return res.status(403).json({ msg: reason });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1d',
+    });
+
+    const today = now.toISOString().split('T')[0];
+
+    let activity = await Activity.findOne({ userId: user._id, date: today });
+
+    let message = 'Login successful';
+    let punchInTime;
+
+    if (!activity) {
+      activity = new Activity({
+        userId: user._id,
+        date: today,
+        punchInTime: now,
+        lastSeen: now,
+        activeSessionStart: now,
       });
-    } catch (err) {
-      res.status(500).json({ msg: err.message });
+      punchInTime = now;
+    } else {
+      message = 'Already punched in';
+      activity.lastSeen = now;
+      activity.activeSessionStart = activity.activeSessionStart || now;
+      punchInTime = activity.punchInTime;
     }
-  };
+
+    await activity.save();
+
+    io.emit('status:update', {
+      userId: user._id,
+      status: 'online',
+      timestamp: now,
+    });
+
+    res.json({
+      token,
+      user,
+      message,
+      punchInTime,
+      lastSeen: activity.lastSeen,
+      activeSessionStart: activity.activeSessionStart,
+      tracktype: user.tracktype,
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
   
 exports.logout = async (req, res) => {
     try {
